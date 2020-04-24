@@ -35,41 +35,41 @@ tickFont = {'size':12, 'color':"rgb (30, 30, 30)", \
     'family' : "Courier New, monospace"}
 
 app = dash.Dash (__name__, external_stylesheets = external_stylessheets)
-
 app.layout = html.Div(
-    style={'font-family':"Courier New, monospace"}, children=[
-        html.H1 ('Case History of the Coronavirus (COVID-19)'),
-        html.Div (className="row", children =[
-            html.H5 ('Country'), 
-            dcc.Dropdown(
-                id='country',
-                options=[{'label':c, 'value':c} \
-                    for c in countries],
-                value='Italy'
-            )
+    style={'font-family':"Courier New, monospace"}, children=[html.H1('Case History of the Coronavirus (COVID-19)'),
+        html.Div(className="row", children=[
+            html.Div(className="four columns", children=[
+                html.H5('Country'),
+                dcc.Dropdown (id = 'country', options=[{'label':c, 'value':c}for c in countries],value='Italy'
+                    )
+            ]),
+            html.Div(className="four columns", children=[
+                html.H5('State / Province'),
+                dcc.Dropdown(
+                    id='state'
+                )
+            ]),
+            html.Div(className="four columns", children=[
+                html.H5('Selected Metrics'),
+                dcc.Checklist(
+                    id='metrics',
+                    options=[{'label':m, 'value':m} for m in \
+                        ['Confirmed', 'Deaths', 'Recovered']],
+                    value=['Confirmed', 'Deaths']
+                )
+            ])
         ]),
-        html.Div(className="four columns", children=[
-            html.H5('State /  Province'),
-            dcc.Checklist(
-                id='metrics',
-                options=[{'label':m, 'value':m}
-                    for m in ['Confirmed', 'Deaths', 'Recovered']],
-                value=['Confirmed', 'Deaths']
-            )
-        ])
-    ]),
 
-dcc.Graph (
-    id="plot_new_metrics",
-    config={'displayModeBar': False}
-),
-dcc.Graph (
-    id="plot_cum_metrics",
-    config={'displayModeBar': False}
+dcc.Graph(id="plot_new_metrics", config={'displayModeBar': False}),
+dcc.Graph ( id="plot_cum_metrics", config={'displayModeBar': False}),
+dcc.Interval(
+            id='interval-component',
+            interval=3600*1000, # Refresh data each hour.
+            n_intervals=0
+        )
+    ]
 )
-
-
-def nonreactive_data (country, state):
+def nonreactive_data(country, state):
     data = allData.loc[allData['Country/Region'] == country].drop('Country/Region', axis=1)
     if state == '<all>':
         data = data.drop ('Province/State', axis=1).groupby ("date").sum().reset_index()
@@ -77,7 +77,6 @@ def nonreactive_data (country, state):
         data = data.loc[data['Province/State'] == state]
     newCases = data.select_dtypes(include='Int64').diff().fillna(0)
     newCases.columns = [column.replace('Cum', 'New') for column in newCases.columns]
-    
     data = data.join(newCases)
     data['dataStr'] = data['date'].dt.strftime('%b %d, %Y')
     return data
@@ -98,10 +97,39 @@ def barchart (data, metrics, prefix="", yaxisTitle=""):
         title=yaxisTitle, showgrid=True, gridcolor='#DDDDDD')
     return figure
 
+@app.callback(
+    Output ('plot_new_metrics', 'figure'),
+    [Input('country', 'value'), Input('state', 'value'),
+    Input('metrics','value')]
+)
+def update_plot_new_metrics (country, state, metrics):
+    data = nonreactive_data(country, state)
+    return barchart(data,metrics, prefix= "New",
+    yaxisTitle="New Cases per Day")
 
+@app.callback(
+    Output ('plot_cum_metrics', 'figure'),
+    [Input('country', 'value'), Input('state', 'value'),
+    Input('metrics', 'value')]
+)
+def update_plot_cum_metrics(country, state, metrics):
+    data = nonreactive_data(country, state)
+    return barchart (data, metrics, prefix = "Cum",
+        yaxisTitle="Cumulated Cases")
 
+@app.callback(
+    [Output ('state', 'options'), Output ('state', 'value')],
+    [Input('country', 'value')]
+)
+def update_states(coutry):
+    states = list(allData.loc[allData['Country/Region'] == country]
+        ['Province/State'].unique()
+    )
+    states.insert(0, '<all>')
+    states.sort()
+    state_options = [{'lable':s, 'value':s} for s in states]
+    state_value = state_options[0]['value']
+    return state_options, state_value
 
-if __name__ == '__main__' :
-
-        result = loadData ('time_series_covid19_confirmed_global.csv', 'Lat')
-        print (result)
+if __name__=='__main__':
+    app.run_server(host="0.0.0.0")
