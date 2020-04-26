@@ -92,7 +92,7 @@ def barchart (data, metrics, prefix="", yaxisTitle=""):
     ])
     figure.update_layout( barmode='group', legend=dict(x=0.5, y=0.95), plot_bgcolor='#FFFFFF', font=tickFont)\
         .update_xaxes(
-        title="", tickangle=-90, type='category', showgrid=True, gridcolor='#DDDDDD', tickfont=tickFont, ticktext=data.dateStr, tickvals=data.date)\
+        title="", tickangle=-90, type='category', showgrid=True, gridcolor='#DDDDDD', tickfont=tickFont, ticktext=data.date, tickvals=data.date)\
         .update_yaxes(
         title=yaxisTitle, showgrid=True, gridcolor='#DDDDDD')
     return figure
@@ -121,7 +121,7 @@ def update_plot_cum_metrics(country, state, metrics):
     [Output ('state', 'options'), Output ('state', 'value')],
     [Input('country', 'value')]
 )
-def update_states(coutry):
+def update_states(country):
     states = list(allData.loc[allData['Country/Region'] == country]
         ['Province/State'].unique()
     )
@@ -132,4 +132,4 @@ def update_states(coutry):
     return state_options, state_value
 
 if __name__=='__main__':
-    app.run_server(host="0.0.0.0")
+    app.run_server(host="localhost")
